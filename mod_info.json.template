@@ -1,0 +1,12 @@
+{
+    "id": "${mod_id}",
+    "name": "${mod_name}",
+    "author": "${mod_author}",
+    "version": "${mod_version}",
+    "description": "${mod_description}",
+    "gameVersion": "${starsector_version}",
+    "totalConversion": ${mod_total_conversion},
+    "jars": ["jars/${mod_id}.jar"],
+    "dependencies": [],
+    "modPlugin": "${mod_group_id}.ModPlugin"
+}
