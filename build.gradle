@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'application'
     // Apply false — we conditionally apply below based on useShadowJar
     id 'com.gradleup.shadow' version '9.4.3' apply false
 }
@@ -13,15 +14,15 @@ repositories {
 
 def gameInstallPath = starsector_path
 def gameCorePath = "$gameInstallPath/starsector-core"
+def apiJarPath = "$gameCorePath/starfarer.api.jar"
 def gameModsPath = "$gameInstallPath/mods"
 
 def gameJars = fileTree(gameCorePath){ include '*.jar' }
-
-
+def apiJar = files(apiJarPath)
 
 dependencies {
-    compileOnly(gameJars)
-
+    implementation(apiJar)
+    runtimeOnly(gameJars)
 }
 
 java {
@@ -45,9 +46,6 @@ sourceSets {
 def useShadow = project.findProperty('useShadowJar')?.toBoolean() ?: false
 
 
-
-
-def useShadow = project.findProperty('useShadowJar')?.toBoolean() ?: false
 
 if (useShadow) {
     apply plugin: 'com.gradleup.shadow'
@@ -82,6 +80,7 @@ def modInfoProps = [
         mod_description      : mod_description,
         starsector_version   : starsector_version,
         mod_group_id         : mod_group_id,
+        mod_main_class       : mod_main_class,
         mod_total_conversion : mod_total_conversion,
 ]
 
@@ -100,6 +99,7 @@ tasks.register('generateModInfo', Copy) {
 def modJarProvider = useShadow ? tasks.named('shadowJar') : tasks.named('jar')
 
 def stagingDir = layout.buildDirectory.dir("staging/${mod_id}")
+
 tasks.register('stageMod', Sync) {
     group = 'StarsectorModDev'
 
@@ -148,3 +148,20 @@ tasks.register('releaseZip', Zip) {
 
     from stagingDir
 }
+
+
+tasks.named('run') {
+    group = 'StarsectorModDev'
+    dependsOn tasks.named('deployMod')
+
+    workingDir = file(gameCorePath)
+}
+
+
+application {
+    def args = layout.projectDirectory.file("args.txt").toString()
+    applicationDefaultJvmArgs = ['-noverify',"@${args}","-Djava.library.path=${gameCorePath}/native/windows","-Dcom.fs.starfarer.settings.paths.saves=${gameInstallPath}/saves","-Dcom.fs.starfarer.settings.paths.screenshots=${gameInstallPath}/screenshots","-Dcom.fs.starfarer.settings.paths.logs=${gameInstallPath}","-Dcom.fs.starfarer.settings.paths.mods=${gameInstallPath}/mods"]
+    mainClass = 'com.fs.starfarer.StarfarerLauncher'
+
+}
+

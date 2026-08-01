@@ -8,5 +8,5 @@
     "totalConversion": ${mod_total_conversion},
     "jars": ["jars/${mod_id}.jar"],
     "dependencies": [],
-    "modPlugin": "${mod_group_id}.ModPlugin"
+    "modPlugin": "${mod_group_id}.${mod_main_class}"
 }
