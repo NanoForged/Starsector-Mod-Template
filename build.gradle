@@ -12,6 +12,16 @@ repositories {
     mavenCentral()
 }
 
+// ==== ctrl ====
+
+// disable to copy full assets dir into target
+boolean isAssetsCopyStrictMode = true
+
+// is force using shadow?
+boolean forceShadow = false
+
+// ==== ctrl ====
+
 def gameInstallPath = starsector_path
 def gameCorePath = "$gameInstallPath/starsector-core"
 def apiJarPath = "$gameCorePath/starfarer.api.jar"
@@ -43,9 +53,9 @@ sourceSets {
     }
 }
 
-def useShadow = project.findProperty('useShadowJar')?.toBoolean() ?: false
 
 
+def useShadow = forceShadow ? true : project.findProperty('useShadowJar')?.toString()?.toBoolean() ?: false
 
 if (useShadow) {
     apply plugin: 'com.gradleup.shadow'
@@ -115,9 +125,15 @@ tasks.register('stageMod', Sync) {
         include 'mod_info.json'
     }
 
-    from("$projectDir/assets/data")  { into 'data'  }
-    from("$projectDir/assets/graphics") { into 'graphics' }
-    from("$projectDir/assets/sounds") { into 'sounds'  }
+    if (isAssetsCopyStrictMode){
+        from("$projectDir/assets/data")  { into 'data'  }
+        from("$projectDir/assets/graphics") { into 'graphics' }
+        from("$projectDir/assets/sounds") { into 'sounds'  }
+    } else {
+
+        from("$projectDir/assets")
+    }
+
 
     into stagingDir
 }
