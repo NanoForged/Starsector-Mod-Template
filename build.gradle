@@ -1,3 +1,5 @@
+import groovy.json.JsonOutput
+
 plugins {
     id 'java'
     id 'application'
@@ -17,10 +19,27 @@ repositories {
 // disable to copy full assets dir into target
 boolean isAssetsCopyStrictMode = true
 
-// is force using shadow?
-boolean forceShadow = false
+// is using shadow?
+boolean usingShadow = false
 
-// ==== ctrl ====
+// auto put `included` depends jar to modDir/libs/*
+boolean bringYouOwnJars = false
+
+// ==== meta builder ====
+def mod_Meta = [
+        id             : mod_id,
+        name           : mod_name,
+        author         : mod_author,
+        version        : mod_version,
+        description    : mod_description,
+        gameVersion    : starsector_version,
+        totalConversion: false,
+        jars           : ["jars/${mod_id}.jar"],
+        dependencies   : [],
+        modPlugin      : mod_main_class,
+]
+
+
 
 def gameInstallPath = starsector_path
 def gameCorePath = "$gameInstallPath/starsector-core"
@@ -29,6 +48,10 @@ def gameModsPath = "$gameInstallPath/mods"
 
 def gameJars = fileTree(gameCorePath){ include '*.jar' }
 def apiJar = files(apiJarPath)
+
+configurations {
+    create('included')
+}
 
 dependencies {
     implementation(apiJar)
@@ -55,9 +78,8 @@ sourceSets {
 
 
 
-def useShadow = forceShadow ? true : project.findProperty('useShadowJar')?.toString()?.toBoolean() ?: false
 
-if (useShadow) {
+if (usingShadow) {
     apply plugin: 'com.gradleup.shadow'
 
     shadowJar {
@@ -82,31 +104,23 @@ if (useShadow) {
 
 
 
-def modInfoProps = [
-        mod_id               : mod_id,
-        mod_name             : mod_name,
-        mod_author           : mod_author,
-        mod_version          : mod_version,
-        mod_description      : mod_description,
-        starsector_version   : starsector_version,
-        mod_group_id         : mod_group_id,
-        mod_main_class       : mod_main_class,
-        mod_total_conversion : mod_total_conversion,
-]
 
-tasks.register('generateModInfo', Copy) {
+tasks.register('generateModInfo') {
     group = 'StarsectorModDev'
 
-    from 'mod_info.json.template'
-    into layout.buildDirectory.dir('generated/modInfo')
-    rename { 'mod_info.json' }
-    expand(modInfoProps)
-    filteringCharset = 'UTF-8'
+    def outputDir = layout.buildDirectory.dir('generated/modInfo')
+    outputs.dir(outputDir)
+
+    doLast {
+        def outFile = outputDir.get().file('mod_info.json').asFile
+        outFile.parentFile.mkdirs()
+        outFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(mod_Meta))
+    }
 }
 
 
 
-def modJarProvider = useShadow ? tasks.named('shadowJar') : tasks.named('jar')
+def modJarProvider = usingShadow ? tasks.named('shadowJar') : tasks.named('jar')
 
 def stagingDir = layout.buildDirectory.dir("staging/${mod_id}")
 
@@ -125,12 +139,17 @@ tasks.register('stageMod', Sync) {
         include 'mod_info.json'
     }
 
+    if (bringYouOwnJars) {
+        from(configurations.included) {
+            into 'libs'
+        }
+    }
+
     if (isAssetsCopyStrictMode){
         from("$projectDir/assets/data")  { into 'data'  }
         from("$projectDir/assets/graphics") { into 'graphics' }
         from("$projectDir/assets/sounds") { into 'sounds'  }
     } else {
-
         from("$projectDir/assets")
     }
 
